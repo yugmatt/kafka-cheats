@@ -61,4 +61,6 @@
 -Describe a consumer group
   bin/kafka-consumer-groups.sh --bootstrap-server kafka3:9092 --describe --group application1
 
-  
+-Performance test
+./bin/kafka-producer-perf-test.sh --topic test4 --num-records 10000 -throughput 10 --payload-file randomdatafile.txt --producer-props acks=1 bootstrap.servers=kafka1:9092,kafka3:9092 --payload-delimiter A
+
