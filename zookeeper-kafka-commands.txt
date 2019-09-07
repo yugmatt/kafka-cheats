@@ -1,0 +1,5 @@
+* Zookeeper shell commands
+- List servers managed by zookeeper
+  bin/zookeeper-shell.sh zookeeper:2181/kafka
+  ls /
+
