@@ -62,5 +62,105 @@
   bin/kafka-consumer-groups.sh --bootstrap-server kafka3:9092 --describe --group application1
 
 -Performance test
-./bin/kafka-producer-perf-test.sh --topic test4 --num-records 10000 -throughput 10 --payload-file randomdatafile.txt --producer-props acks=1 bootstrap.servers=kafka1:9092,kafka3:9092 --payload-delimiter A
+  ./bin/kafka-producer-perf-test.sh --topic test4 --num-records 10000 -throughput 10 --payload-file randomdatafile.txt --producer-props acks=1 bootstrap.servers=kafka1:9092,kafka3:9092 --payload-delimiter A
+
+***********
+PARTITIONS:
+***********
+Where partitions are stored ?
+server.properties (File) -> log.dirs (property)
+
+Eg: /data/kafka
+ls /data/kafka
+test-0 test-1
+
+cd test-0
+ls 
+0000000000000000.log (data payload is stored)
+0000000000000000.timeindex [ mappings between message offset and physical location 
+0000000000000000.index       inside index file ]
+0000000000000000.snapshot (internal kafka snapshots)
+0000000000000011.log
+0000000000000011.timeindex
+0000000000000011.index
+0000000000000011.snapshot
+
+leader-epoch-checkpoint  (handle leader failures between replicas)
+
+-Output the data from the partition log
+  ./bin/kafka-run-class.sh kafka.tools.DumpLogSegments --print-data-log --files /data/kafka/test5-6/00000000000000000000.log
+
+-Rotate the logs
+  ./bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka --alter --entity-type topics --entity-name test --add-config segment.ms=60000
+  
+-Open a producer to send messages
+  ./bin/kafka-console-producer.sh --broker-list kafka1:9092 --topic test
+  
+-Remove the log rotation setting
+  ./bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka --alter --entity-type topics --entity-name test --delete-config segment.ms
+
+-Create the json file to reassign partitions
+  {"topics":
+    [{"topic": "test"}],
+    "version":1
+  }
+
+-Run the command through a dry-run
+  ./bin/kafka-reassign-partitions.sh --zookeeper zookeeper1:2181/kafka --generate \
+  --topics-to-move-json-file topics.json \
+  --broker-list 3,2,1
+
+-Execute the reassignment
+  ./bin/kafka-reassign-partitions.sh --zookeeper zookeeper1:2181/kafka --execute \
+  --reassignment-json-file plan.json 
+
+-Verify the reassignment completed
+  ./bin/kafka-reassign-partitions.sh --zookeeper zookeeper1:2181/kafka --verify \  
+  --reassignment-json-file plan.json
+
+-Change the replication factor
+  {"partitions":
+  [{"topic": "test", "partition": 0,
+  "replicas": [
+  2,
+  1
+  ]
+  }
+  ],
+  "version":1
+  }
+
+-Execute the replication factor change
+  ./bin/kafka-reassign-partitions.sh --zookeeper zookeeper1:2181/kafka --execute \
+  --reassignment-json-file replicacount.json
+
+-Describe the topic and see the change
+  ./bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka --topic test --describe
+  
+-Re-assign the leader replica
+  ./bin/kafka-preferred-replica-election.sh --zookeeper zookeeper1:2181/kafka
+
+***********
+Reliability
+***********
+acks = 0 / 1 / all
+
+./bin/kafka-console-producer.sh --broker-list kafka1:9092 --topic test --producer-property acks=all
+
+---------
+Security
+---------
+Authentication of connections to brokers from clients (producers and consumers), other brokers and tools, using either SSL or SASL. 
+-Kafka supports the following SASL mechanisms:
+  SASL/GSSAPI (Kerberos) - starting at version 0.9.0.0
+  SASL/PLAIN - starting at version 0.10.0.0
+  SASL/SCRAM-SHA-256 and SASL/SCRAM-SHA-512 - starting at version 0.10.2.0
+  SASL/OAUTHBEARER - starting at version 2.0
+  
+-Java Utility to generate certificate
+keytool -keystore server.keystore.jks -alias kafka1 -validity 365 -genkey -keyalg RSA 
+  
+----------
+Data Types
+----------
 
