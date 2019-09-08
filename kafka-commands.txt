@@ -164,3 +164,181 @@ keytool -keystore server.keystore.jks -alias kafka1 -validity 365 -genkey -keyal
 Data Types
 ----------
 
+
+-------------
+Kafka Connect
+-------------
+./bin/connect-standalone.sh config/connect-standalone.properties config/connect-file-source.properties
+
+./bin/connect-standalone.sh config/connect-standalone.properties config/connect-file-source.properties config/connect-file-sink.properties
+
+----------
+Topics
+----------
+# Create a topic if a topic with the same name does NOT exist
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--create \
+--topic topic-1 \
+--replication-factor 1 \
+--partitions 3 \
+--if-not-exists
+
+# Alter the number of partitions (can only go up)
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--alter \
+--topic topic-1 \
+--partitions 7
+
+# Delete a topic (this is irreversible)
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--delete \
+--topic topic-1
+
+# List all topics
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--list
+
+# Describe all the topics at once
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--describe
+
+# Identify any overrides to topics (configs added to the defaults)
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--describe \
+--topics-with-overrides
+
+# Topics that are not in-sync with all replicas
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--describe \
+--under-replicated-partitions
+
+# Topics without a leader replica
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--describe \
+--unavailable-partitions
+
+# Describe the configurations for all topics (only in addition to the defaults)
+bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka \
+--describe \
+--entity-type topics
+
+# Describe the configurations for a specific topic (defaults will not show)
+bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka \
+--describe \
+--entity-type topics \
+--entity-name topic-1
+
+# Change the topics message retention
+bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka \
+--alter \
+--entity-type topics \
+--entity-name connect-test \
+--add-config retention.ms=3600000
+
+# Describe the configurations for all brokers (defaults will not show)
+bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka \
+--entity-type brokers \
+--entity-default \
+--describe
+
+# Describe the configuration for broker 0 (defaults will not show)
+bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka \
+--entity-type brokers \
+--entity-name 0 \
+--describe
+
+# Add a custom config to broker 0 that will change it's log cleaner thread count
+bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka \
+--entity-type brokers \
+--entity-name 0 \
+--alter \
+--add-config log.cleaner.threads=2
+
+# Remove all custom configs (not including defaults) from broker 0
+bin/kafka-configs.sh --zookeeper zookeeper1:2181/kafka \
+--entity-type brokers \
+--entity-name 0 \
+--alter \
+--delete-config log.cleaner.threads
+
+---------------
+Consumer Groups
+---------------
+# List all the consumer groups
+bin/kafka-consumer-groups.sh --bootstrap-server kafka1:9092 \
+--list
+
+# Describe a specific consumer group
+bin/kafka-consumer-groups.sh --bootstrap-server kafka1:9092 \
+--describe \
+--group application1
+
+# Describe the active members of the group 
+bin/kafka-consumer-groups.sh --bootstrap-server kafka1:9092 \
+--describe \
+--group application1 \
+--members
+
+# If the group has active members, get a more verbose output
+bin/kafka-consumer-groups.sh --bootstrap-server kafka1:9092 \
+--describe \
+--group application1 \
+--members \
+--verbose
+
+# Describe the state of the group
+bin/kafka-consumer-groups.sh --bootstrap-server kafka1:9092 \
+--describe \
+--group application1 \
+--state
+
+# Delete a consumer group (only works if there are no active members). 
+bin/kafka-consumer-groups.sh --bootstrap-server kafka1:9092 \
+--delete \
+--group application1
+
+# Delete multiple consumer groups
+bin/kafka-consumer-groups.sh --bootstrap-server kafka1:9092 \
+--delete \
+--group application1 \
+--group application2
+
+# Reset offsets for a consumer group
+bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 \
+--reset-offsets \
+--group application1 \
+--topic topic-1 \
+--to-latest
+
+------------------
+Log Compaction
+------------------
+-Create a topic with log compaction:
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--create \
+--topic transaction \
+--partitions 1 \
+--replication-factor 1 \
+--config cleanup.policy=compact \
+--config min.cleanable.dirty.ratio=0.001 \
+--config segment.ms=5000
+
+-Describe the topic to see the configuration:
+bin/kafka-topics.sh --zookeeper zookeeper1:2181/kafka \
+--topic transaction \
+--describe
+
+-Open a consumer to the topic:
+bin/kafka-console-consumer.sh --bootstrap-server kafka1:9092 \
+--topic transaction \
+--from-beginning \
+--property print.key=true \
+--property key.separator=,
+
+-Open a producer to write messages to Kafka:
+bin/kafka-console-producer.sh --broker-list kafka1:9092 \
+--topic transaction \
+--property parse.key=true \
+--property key.separator=,
+
+
